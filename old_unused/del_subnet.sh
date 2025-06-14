@@ -3,12 +3,6 @@
 IP=$1
 #SUBNET="`echo $IP | cut -d. -f1,2,3`.0/24"
 
-
-# echo $IP | grep -E "185.248.139|5.183.170." >/dev/null
-# if [ $? -eq 0 ]; then
-#         curl https://voxility.lan/change_mode/$IP/2/1
-# fi
-
 SUBNET="`echo $IP | cut -d. -f1,2,3`"
 PREFIX="$(ip route show table 10| grep $SUBNET | cut -d ' ' -f1)"
 

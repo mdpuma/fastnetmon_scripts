@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# ./notify_about_attack.sh 46.102.154.64 incoming 10 ban
-# ./notify_about_attack.sh 46.102.154.64 incoming 10 unban
-# ./notify_about_attack.sh 46.102.154.64 incoming 10 attack_details
+# ./notify_about_attack.sh 1.1.1.1 incoming 10 ban
+# ./notify_about_attack.sh 1.1.1.1 incoming 10 unban
+# ./notify_about_attack.sh 1.1.1.1 incoming 10 attack_details
 # This script will get following params:
 #  $1 client_ip_as_string,string
 #  $2 data_direction: incoming,outgoing
@@ -12,6 +12,11 @@
 email_notify="admin@innovahosting.net"
 nexthop="192.168.5.1"
 
+send_syslog() {
+	MSG="$1"
+	
+	echo "$MSG" | logger -t fastnetmon -n 10.4.0.6
+}
 
 banip() {
 	IP=$1
@@ -20,7 +25,8 @@ banip() {
 	PREFIX=$(birdc "show route for $IP table fulltable" | grep $SUBNET | cut -d ' ' -f1)
 
 	if [ "$PREFIX" = "" ]; then
-		echo "Cant ban ip address $IP, no prefix found" | mail -s "[`hostname`] Cant ban ip address $IP, no prefix found" $email_notify;
+		ip route add $IP via $nexthop table 10
+		echo "Cant enable voxility-only for $IP, no prefix found" | mail -s "[`hostname`] Cant enable voxility-only for $IP, no prefix found" $email_notify;
 	else
 		echo "Adding $PREFIX to voxility only"
 		ip route add $PREFIX via $nexthop table 10
@@ -30,11 +36,6 @@ banip() {
 
 unbanip() {
 	IP=$1
-	
-	# echo $IP | grep -E "185.248.139|5.183.170." >/dev/null
-	# if [ $? -eq 0 ]; then
-	#         curl https://voxility.iphost.md/change_mode/$IP/2/1
-	# fi
 	
 	SUBNET="`echo $IP | cut -d. -f1,2,3`"
 	PREFIX="$(ip route show table 10| grep $SUBNET | cut -d ' ' -f1)"
@@ -72,7 +73,7 @@ unbanip() {
 		echo "Delete $PREFIX to voxility only"
 		ip route del $PREFIX table 10
 	fi
-	#ip route del $IP table 10
+	ip route del $IP table 10
 
 	exit 0
 }
@@ -108,5 +109,6 @@ fi
 
 if [ "$4" == "attack_details" ]; then
     cat | mail -s "[`hostname`] FastNetMon Guard: IP $1 blocked because $2 attack with power $3 pps" $email_notify;
+		send_syslog "[`hostname`] FastNetMon Guard: IP $1 blocked because $2 attack with power $3 pps"
     exit 0
 fi
